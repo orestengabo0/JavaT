@@ -2,7 +2,6 @@ package com.spring.JavaT.user.dto;
 
 import com.spring.JavaT.common.EntityStatus;
 import com.spring.JavaT.user.Role;
-import com.spring.JavaT.user.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,10 +9,12 @@ import lombok.Getter;
 import java.time.Instant;
 
 /**
- * Safe read-only projection of a {@link User}.
+ * Safe read-only projection of a {@link com.spring.JavaT.user.User}.
  *
  * <p>Never exposes the password hash or internal audit fields.
  * Used as the response body for all user-facing and admin endpoints.
+ *
+ * <p>Instances are produced by {@link com.spring.JavaT.user.UserMapper#toDto(com.spring.JavaT.user.User)}.
  */
 @Getter
 @Builder
@@ -46,27 +47,4 @@ public class UserDto {
 
     @Schema(description = "UTC timestamp of last update")
     private final Instant updatedAt;
-
-    // -------------------------------------------------------------------------
-    // Mapper
-    // -------------------------------------------------------------------------
-
-    /**
-     * Maps a {@link User} entity to a {@link UserDto}.
-     * Centralising the mapping here means no MapStruct dependency is needed
-     * for a simple projection like this.
-     */
-    public static UserDto from(User user) {
-        return UserDto.builder()
-                .id(user.getId())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .username(user.getDisplayUsername())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .status(user.getStatus())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
-    }
 }

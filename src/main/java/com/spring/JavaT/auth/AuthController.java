@@ -1,14 +1,17 @@
 package com.spring.JavaT.auth;
 
 import com.spring.JavaT.auth.dto.AuthResponse;
+import com.spring.JavaT.auth.dto.ForgotPasswordRequest;
 import com.spring.JavaT.auth.dto.LoginRequest;
 import com.spring.JavaT.auth.dto.RegisterRequest;
+import com.spring.JavaT.auth.dto.ResetPasswordRequest;
 import com.spring.JavaT.common.ApiResponse;
 import com.spring.JavaT.common.ResponseBuilder;
 import com.spring.JavaT.common.validation.ValidationGroups;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -57,5 +60,33 @@ public class AuthController {
 
         AuthResponse response = authService.login(request);
         return ResponseBuilder.ok(response, "Login successful", httpRequest);
+    }
+
+    /**
+     * Initiates a password reset. Always returns 200 to prevent user enumeration.
+     */
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request a password reset email")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+
+        authService.forgotPassword(request);
+        return ResponseBuilder.ok(
+                "If an account with that email exists, a password reset link has been sent.",
+                httpRequest);
+    }
+
+    /**
+     * Completes a password reset using the token from the email.
+     */
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password using the token from email")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest) {
+
+        authService.resetPassword(request);
+        return ResponseBuilder.ok("Password has been reset successfully. Please log in.", httpRequest);
     }
 }

@@ -5,9 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import com.spring.JavaT.security.JwtProperties;
 import com.spring.JavaT.security.SecurityProperties;
+import com.spring.JavaT.notification.MailProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties({JwtProperties.class, SecurityProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, SecurityProperties.class, MailProperties.class})
 public class JavaTApplication {
 
 	public static void main(String[] args) {

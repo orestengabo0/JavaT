@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 /**
  * Business logic for all user management operations.
  *
@@ -30,6 +29,7 @@ public class UserService {
 
     private final UserRepository  userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper      userMapper;
 
     // -------------------------------------------------------------------------
     // Profile — self-service
@@ -42,7 +42,7 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public UserDto getMyProfile(String email) {
-        return UserDto.from(findByEmailOrThrow(email));
+        return userMapper.toDto(findByEmailOrThrow(email));
     }
 
     /**
@@ -72,7 +72,7 @@ public class UserService {
             }
         }
 
-        return UserDto.from(userRepository.save(user));
+        return userMapper.toDto(userRepository.save(user));
     }
 
     /**
@@ -103,7 +103,7 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public Page<UserDto> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable).map(UserDto::from);
+        return userRepository.findAll(pageable).map(userMapper::toDto);
     }
 
     /**
@@ -113,7 +113,7 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public UserDto getUserById(Long id) {
-        return UserDto.from(findByIdOrThrow(id));
+        return userMapper.toDto(findByIdOrThrow(id));
     }
 
     /**
@@ -127,7 +127,7 @@ public class UserService {
     public UserDto updateRole(Long id, UpdateRoleRequest request) {
         User user = findByIdOrThrow(id);
         user.setRole(Role.valueOf(request.getRole()));
-        return UserDto.from(userRepository.save(user));
+        return userMapper.toDto(userRepository.save(user));
     }
 
     /**
@@ -146,7 +146,7 @@ public class UserService {
     public UserDto deactivateUser(Long id, String adminEmail) {
         User user = findByIdOrThrow(id);
         user.softDelete(adminEmail);
-        return UserDto.from(userRepository.save(user));
+        return userMapper.toDto(userRepository.save(user));
     }
 
     /**
@@ -159,7 +159,7 @@ public class UserService {
     public UserDto activateUser(Long id) {
         User user = findByIdOrThrow(id);
         user.restore();
-        return UserDto.from(userRepository.save(user));
+        return userMapper.toDto(userRepository.save(user));
     }
 
     // -------------------------------------------------------------------------
