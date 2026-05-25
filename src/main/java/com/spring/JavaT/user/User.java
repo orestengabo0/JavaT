@@ -71,9 +71,28 @@ public class User extends BaseEntity implements UserDetails {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    /** Spring Security uses {@code username} as the principal identifier. */
+    /**
+     * Returns the email address as the Spring Security principal identifier.
+     *
+     * <p>This is intentionally the email, not the {@code username} field, because:
+     * <ul>
+     *   <li>Login is done by email.</li>
+     *   <li>The JWT {@code sub} claim is set from this value.</li>
+     *   <li>{@link com.spring.JavaT.security.UserDetailsServiceImpl} loads users by email.</li>
+     * </ul>
+     * All three must use the same identifier or token validation silently fails.
+     * Use {@link #getDisplayUsername()} when you need the human-readable username.
+     */
     @Override
     public String getUsername() {
+        return email;
+    }
+
+    /**
+     * Returns the user-chosen display username (e.g. "johndoe").
+     * Use this anywhere you need the username field, not the security principal.
+     */
+    public String getDisplayUsername() {
         return username;
     }
 

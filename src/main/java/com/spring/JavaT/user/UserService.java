@@ -64,7 +64,7 @@ public class UserService {
         }
         if (request.getUsername() != null) {
             String newUsername = request.getUsername().strip();
-            if (!newUsername.equals(user.getUsername())) {
+            if (!newUsername.equals(user.getDisplayUsername())) {
                 if (userRepository.existsByUsername(newUsername)) {
                     throw new DuplicateResourceException("User", "username", newUsername);
                 }

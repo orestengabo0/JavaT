@@ -61,7 +61,7 @@ public class UserDto {
                 .id(user.getId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .username(user.getUsername())
+                .username(user.getDisplayUsername())
                 .email(user.getEmail())
                 .role(user.getRole())
                 .status(user.getStatus())
