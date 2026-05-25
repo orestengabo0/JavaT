@@ -3,7 +3,6 @@ package com.spring.JavaT.audit;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
@@ -27,7 +26,6 @@ import java.util.Optional;
  * {@code authentication.getName()} with a cast to your {@code UserDetails}
  * implementation and call the appropriate ID getter.
  */
-@Component
 public class AuditAwareImpl implements AuditorAware<String> {
 
     private static final String SYSTEM_USER = "system";

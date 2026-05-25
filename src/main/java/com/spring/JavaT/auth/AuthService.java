@@ -1,0 +1,117 @@
+package com.spring.JavaT.auth;
+
+import com.spring.JavaT.auth.dto.AuthResponse;
+import com.spring.JavaT.auth.dto.LoginRequest;
+import com.spring.JavaT.auth.dto.RegisterRequest;
+import com.spring.JavaT.exception.DuplicateResourceException;
+import com.spring.JavaT.security.JwtProperties;
+import com.spring.JavaT.security.JwtService;
+import com.spring.JavaT.user.Role;
+import com.spring.JavaT.user.User;
+import com.spring.JavaT.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+
+/**
+ * Handles user registration and login.
+ *
+ * <p>Both operations return an {@link AuthResponse} containing access and refresh tokens
+ * so the client is immediately authenticated after registering.
+ */
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository        userRepository;
+    private final PasswordEncoder       passwordEncoder;
+    private final JwtService            jwtService;
+    private final JwtProperties         jwtProperties;
+    private final AuthenticationManager authenticationManager;
+
+    // -------------------------------------------------------------------------
+    // Registration
+    // -------------------------------------------------------------------------
+
+    /**
+     * Creates a new user account and returns authentication tokens.
+     *
+     * @param request the registration payload
+     * @return access and refresh tokens for the newly created user
+     * @throws DuplicateResourceException if the email or username is already taken
+     */
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("User", "email", request.getEmail());
+        }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("User", "username", request.getUsername());
+        }
+
+        User user = User.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER)   // new registrations always start as USER
+                .build();
+
+        userRepository.save(user);
+
+        return buildAuthResponse(user);
+    }
+
+    // -------------------------------------------------------------------------
+    // Login
+    // -------------------------------------------------------------------------
+
+    /**
+     * Authenticates a user by email and password and returns tokens.
+     *
+     * <p>Delegates credential verification to Spring Security's
+     * {@link AuthenticationManager}, which calls {@code UserDetailsServiceImpl}
+     * and the {@code PasswordEncoder}. If authentication fails, Spring throws
+     * {@code BadCredentialsException} which the global handler maps to 401.
+     *
+     * @param request the login payload
+     * @return access and refresh tokens
+     */
+    public AuthResponse login(LoginRequest request) {
+        // Throws BadCredentialsException if credentials are wrong
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalStateException("User not found after successful authentication"));
+
+        return buildAuthResponse(user);
+    }
+
+    // -------------------------------------------------------------------------
+    // Token builder
+    // -------------------------------------------------------------------------
+
+    private AuthResponse buildAuthResponse(User user) {
+        // Embed the role as a custom claim so it's available without a DB lookup
+        Map<String, Object> extraClaims = Map.of("role", user.getRole().name());
+
+        String accessToken  = jwtService.generateAccessToken(extraClaims, user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(jwtProperties.getExpirationMs() / 1000)
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+    }
+}

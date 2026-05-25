@@ -1,0 +1,108 @@
+package com.spring.JavaT.user;
+
+import com.spring.JavaT.common.BaseEntity;
+import com.spring.JavaT.common.EntityStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * Core user entity. Extends {@link BaseEntity} for id, timestamps, soft-delete,
+ * and status, and implements {@link UserDetails} so Spring Security can use it
+ * directly without an adapter class.
+ *
+ * <p>Account locking and expiry are delegated to {@link EntityStatus}:
+ * only {@code ACTIVE} users are considered enabled and non-locked.
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "users")
+public class User extends BaseEntity implements UserDetails {
+
+    @Column(name = "first_name", nullable = false, length = 50)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    private String lastName;
+
+    /** Must be unique across the table — enforced by a DB UNIQUE constraint. */
+    @Column(name = "username", nullable = false, unique = true, length = 50)
+    private String username;
+
+    /** Must be unique across the table — enforced by a DB UNIQUE constraint. */
+    @Column(name = "email", nullable = false, unique = true, length = 254)
+    private String email;
+
+    /** BCrypt-hashed password. Never store plain text. */
+    @Column(name = "password", nullable = false)
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    private Role role;
+
+    // -------------------------------------------------------------------------
+    // UserDetails contract
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns a single authority derived from the user's {@link Role}.
+     * The {@code ROLE_} prefix is required by Spring Security's {@code hasRole()} expressions.
+     */
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    /** Spring Security uses {@code username} as the principal identifier. */
+    @Override
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    /**
+     * Account is considered non-expired, non-locked, and enabled only when
+     * the entity status is {@link EntityStatus#ACTIVE} and not soft-deleted.
+     */
+    @Override
+    public boolean isAccountNonExpired() {
+        return isActive();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return !EntityStatus.SUSPENDED.equals(getStatus());
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true; // credential expiry not implemented in this template
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return isActive();
+    }
+}
