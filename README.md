@@ -35,7 +35,7 @@ A production-ready Spring Boot template with authentication, user management, em
 ### 1. Clone and create the database
 
 ```bash
-git clone https://github.com/your-username/JavaT.git
+git clone https://github.com/orestengabo0/JavaT.git
 cd JavaT
 ```
 
