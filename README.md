@@ -43,25 +43,35 @@ cd JavaT
 CREATE DATABASE javat;
 ```
 
-### 2. Configure `application.properties`
+### 2. Configure credentials
 
-Open `src/main/resources/application.properties` and update:
+`application.properties` (committed to git) contains only placeholder values. Put your real credentials in `application-local.properties` which is gitignored:
 
 ```properties
-# Database
+# src/main/resources/application-local.properties  ← gitignored, never committed
+
 spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/javat
 spring.datasource.username=your_postgres_username
 spring.datasource.password=your_postgres_password
 
-# JWT — generate a new Base64-encoded secret (min 32 bytes)
 app.jwt.secret=your-base64-encoded-secret
 
-# Mail — Gmail example (use an App Password, not your account password)
 spring.mail.username=your-email@gmail.com
 spring.mail.password=your-16-char-app-password
 app.mail.from=noreply@yourdomain.com
 app.mail.from-name=YourAppName
 app.mail.base-url=http://localhost:8080
+```
+
+Then activate the `local` profile when running:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Or set the environment variable in your IDE run configuration:
+```
+SPRING_PROFILES_ACTIVE=local
 ```
 
 > **Generating a JWT secret:**

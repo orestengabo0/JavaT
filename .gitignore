@@ -4,6 +4,13 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Credentials — never commit these ###
+**/application-local.properties
+**/application-*.local.properties
+**/.env
+**/.env.*
+!**/.env.example
+
 ### STS ###
 .apt_generated
 .classpath
