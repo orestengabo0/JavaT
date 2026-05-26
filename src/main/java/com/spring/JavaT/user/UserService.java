@@ -1,5 +1,7 @@
 package com.spring.JavaT.user;
 
+import com.spring.JavaT.common.filter.BaseSpecification;
+import com.spring.JavaT.common.filter.SearchCriteria;
 import com.spring.JavaT.exception.DuplicateResourceException;
 import com.spring.JavaT.exception.ForbiddenException;
 import com.spring.JavaT.exception.ResourceNotFoundException;
@@ -10,9 +12,13 @@ import com.spring.JavaT.user.dto.UserDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 /**
  * Business logic for all user management operations.
  *
@@ -99,11 +105,15 @@ public class UserService {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns a paginated list of all users. Admin only.
+     * Returns a paginated, optionally filtered list of all users. Admin only.
+     *
+     * @param criteria list of filter conditions (empty = no filter)
+     * @param pageable pagination and sort
      */
     @Transactional(readOnly = true)
-    public Page<UserDto> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable).map(userMapper::toDto);
+    public Page<UserDto> getAllUsers(List<SearchCriteria> criteria, Pageable pageable) {
+        Specification<User> spec = new BaseSpecification<>(criteria);
+        return userRepository.findAll(spec, pageable).map(userMapper::toDto);
     }
 
     /**

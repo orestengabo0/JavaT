@@ -44,11 +44,15 @@ public class AuthService {
     private final JwtProperties                jwtProperties;
     private final AuthenticationManager        authenticationManager;
     private final AuthMapper                   authMapper;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final PasswordResetTokenRepository       passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository   emailVerificationTokenRepository;
     private final EmailService                 emailService;
 
     @Value("${app.auth.password-reset-token-expiry-minutes:15}")
     private int passwordResetTokenExpiryMinutes;
+
+    @Value("${app.auth.verification-token-expiry-hours:24}")
+    private int verificationTokenExpiryHours;
 
     // -------------------------------------------------------------------------
     // Registration
@@ -74,8 +78,13 @@ public class AuthService {
         User user = authMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.USER);
+        // New accounts start as PENDING until email is verified
+        user.setStatus(com.spring.JavaT.common.EntityStatus.PENDING);
 
         userRepository.save(user);
+
+        // Issue a verification token and send the email asynchronously
+        issueAndSendVerificationToken(user);
 
         return buildAuthResponse(user);
     }
@@ -103,6 +112,15 @@ public class AuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalStateException("User not found after successful authentication"));
+
+        // Block unverified accounts with a clear, actionable message
+        if (com.spring.JavaT.common.EntityStatus.PENDING.equals(user.getStatus())) {
+            throw new BusinessException(
+                    "Email address not verified. Please check your inbox and click the verification link.",
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "EMAIL_NOT_VERIFIED"
+            );
+        }
 
         return buildAuthResponse(user);
     }
@@ -189,8 +207,79 @@ public class AuthService {
     }
 
     // -------------------------------------------------------------------------
+    // Email verification
+    // -------------------------------------------------------------------------
+
+    /**
+     * Verifies a user's email address using the token from the verification email.
+     *
+     * <p>On success the user's status is promoted from {@code PENDING} to {@code ACTIVE}
+     * and the token is deleted so it cannot be reused.
+     *
+     * @param token the raw token from the email link query parameter
+     * @throws ResourceNotFoundException if the token does not exist
+     * @throws BusinessException         if the token has expired
+     */
+    @Transactional
+    public void verifyEmail(String token) {
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository
+                .findByToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Verification link is invalid or has already been used"));
+
+        if (verificationToken.isExpired()) {
+            throw new BusinessException(
+                    "Verification link has expired. Please request a new one.",
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "VERIFICATION_TOKEN_EXPIRED"
+            );
+        }
+
+        User user = verificationToken.getUser();
+        user.setStatus(com.spring.JavaT.common.EntityStatus.ACTIVE);
+        userRepository.save(user);
+
+        // Delete the token — it's single-use
+        emailVerificationTokenRepository.delete(verificationToken);
+    }
+
+    /**
+     * Resends the verification email for an unverified account.
+     *
+     * <p>Always returns successfully even if the email is not found or the account
+     * is already verified — prevents user enumeration.
+     *
+     * @param email the email address to resend to
+     */
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (com.spring.JavaT.common.EntityStatus.PENDING.equals(user.getStatus())) {
+                // Delete any existing token before issuing a fresh one
+                emailVerificationTokenRepository.deleteByUser(user);
+                issueAndSendVerificationToken(user);
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Creates a verification token for the given user and fires the email asynchronously.
+     */
+    private void issueAndSendVerificationToken(User user) {
+        String rawToken = generateSecureToken();
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .token(rawToken)
+                .user(user)
+                .expiresAt(Instant.now().plus(verificationTokenExpiryHours, ChronoUnit.HOURS))
+                .build();
+
+        emailVerificationTokenRepository.save(verificationToken);
+        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), rawToken);
+    }
 
     /**
      * Generates a cryptographically secure URL-safe token (48 random bytes → 64 Base64 chars).

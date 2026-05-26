@@ -15,9 +15,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -76,7 +78,7 @@ public class AuthController {
                 "If an account with that email exists, a password reset link has been sent.",
                 httpRequest);
     }
-
+    
     /**
      * Completes a password reset using the token from the email.
      */
@@ -88,5 +90,35 @@ public class AuthController {
 
         authService.resetPassword(request);
         return ResponseBuilder.ok("Password has been reset successfully. Please log in.", httpRequest);
+    }
+
+    /**
+     * Verifies a user's email address using the token from the verification email.
+     * The token arrives as a query parameter from the link clicked in the email.
+     */
+    @GetMapping("/verify-email")
+    @Operation(summary = "Verify email address using the token from the verification email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @RequestParam String token,
+            HttpServletRequest httpRequest) {
+
+        authService.verifyEmail(token);
+        return ResponseBuilder.ok("Email verified successfully. You can now log in.", httpRequest);
+    }
+
+    /**
+     * Resends the verification email for an unverified account.
+     * Always returns 200 to prevent user enumeration.
+     */
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend the email verification link")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+
+        authService.resendVerificationEmail(request.getEmail());
+        return ResponseBuilder.ok(
+                "If an unverified account with that email exists, a new verification link has been sent.",
+                httpRequest);
     }
 }

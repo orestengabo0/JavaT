@@ -5,12 +5,16 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /**
  * Sends emails asynchronously using Spring's {@link JavaMailSender}.
@@ -19,6 +23,10 @@ import java.io.UnsupportedEncodingException;
  * so they execute on the dedicated email thread pool defined in
  * {@link com.spring.JavaT.config.AsyncConfig}. The calling thread returns
  * immediately — email delivery happens in the background.
+ *
+ * <p>HTML templates live in {@code src/main/resources/templates/email/}.
+ * Variables are substituted using a simple {@code {{placeholder}}} syntax
+ * via {@link #loadTemplate(String, Map)} — no template engine dependency needed.
  *
  * <p>Failures are logged but not re-thrown to the caller. If you need
  * retry logic, replace the catch block with a message queue (e.g. RabbitMQ).
@@ -32,11 +40,15 @@ public class EmailService {
     private final MailProperties mailProperties;
 
     // -------------------------------------------------------------------------
-    // Generic send
+    // Generic send — the reusable core
     // -------------------------------------------------------------------------
 
     /**
      * Sends an email asynchronously.
+     *
+     * <p>This is the single entry point for all email delivery. Every named
+     * method below (verification, password reset, etc.) builds an
+     * {@link EmailRequest} and delegates here.
      *
      * @param request all email data (to, subject, body, html flag)
      */
@@ -68,7 +80,7 @@ public class EmailService {
     }
 
     // -------------------------------------------------------------------------
-    // Verification email
+    // Named email types — add new ones here as the app grows
     // -------------------------------------------------------------------------
 
     /**
@@ -83,7 +95,11 @@ public class EmailService {
         String confirmUrl = mailProperties.getBaseUrl()
                 + "/api/v1/auth/verify-email?token=" + token;
 
-        String body = buildVerificationEmailBody(firstName, confirmUrl);
+        String body = loadTemplate("verification.html", Map.of(
+                "appName",    mailProperties.getFromName(),
+                "firstName",  firstName,
+                "confirmUrl", confirmUrl
+        ));
 
         send(EmailRequest.builder()
                 .to(toEmail)
@@ -93,10 +109,6 @@ public class EmailService {
                 .html(true)
                 .build());
     }
-
-    // -------------------------------------------------------------------------
-    // Password reset email
-    // -------------------------------------------------------------------------
 
     /**
      * Sends a password reset email with a time-limited reset link.
@@ -110,7 +122,11 @@ public class EmailService {
         String resetUrl = mailProperties.getBaseUrl()
                 + "/api/v1/auth/reset-password?token=" + token;
 
-        String body = buildPasswordResetEmailBody(firstName, resetUrl);
+        String body = loadTemplate("password-reset.html", Map.of(
+                "appName",   mailProperties.getFromName(),
+                "firstName", firstName,
+                "resetUrl",  resetUrl
+        ));
 
         send(EmailRequest.builder()
                 .to(toEmail)
@@ -122,63 +138,36 @@ public class EmailService {
     }
 
     // -------------------------------------------------------------------------
-    // HTML templates
+    // Template loader
     // -------------------------------------------------------------------------
 
-    private String buildVerificationEmailBody(String firstName, String confirmUrl) {
-        return """
-                <!DOCTYPE html>
-                <html>
-                <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
-                  <h2>Welcome to %s, %s!</h2>
-                  <p>Please verify your email address by clicking the button below.</p>
-                  <p>
-                    <a href="%s"
-                       style="display:inline-block; padding:12px 24px; background:#4F46E5;
-                              color:#fff; text-decoration:none; border-radius:6px;">
-                      Verify Email
-                    </a>
-                  </p>
-                  <p>Or copy this link into your browser:</p>
-                  <p><a href="%s">%s</a></p>
-                  <p>This link expires in 24 hours.</p>
-                  <hr/>
-                  <p style="font-size:12px; color:#999;">
-                    If you did not create an account, you can safely ignore this email.
-                  </p>
-                </body>
-                </html>
-                """.formatted(
-                mailProperties.getFromName(), firstName,
-                confirmUrl, confirmUrl, confirmUrl
-        );
-    }
+    /**
+     * Loads an HTML template from {@code classpath:templates/email/<name>}
+     * and substitutes all {@code {{key}}} placeholders with the provided values.
+     *
+     * <p>This is intentionally simple — no template engine dependency.
+     * If you need conditionals, loops, or inheritance, add Thymeleaf or
+     * Freemarker and replace this method.
+     *
+     * @param templateName filename inside {@code templates/email/} (e.g. {@code "verification.html"})
+     * @param variables    map of placeholder name → replacement value
+     * @return the rendered HTML string
+     */
+    private String loadTemplate(String templateName, Map<String, String> variables) {
+        try {
+            ClassPathResource resource = new ClassPathResource("templates/email/" + templateName);
+            String content = resource.getContentAsString(StandardCharsets.UTF_8);
 
-    private String buildPasswordResetEmailBody(String firstName, String resetUrl) {
-        return """
-                <!DOCTYPE html>
-                <html>
-                <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
-                  <h2>Password Reset Request</h2>
-                  <p>Hi %s,</p>
-                  <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-                  <p>
-                    <a href="%s"
-                       style="display:inline-block; padding:12px 24px; background:#4F46E5;
-                              color:#fff; text-decoration:none; border-radius:6px;">
-                      Reset Password
-                    </a>
-                  </p>
-                  <p>Or copy this link into your browser:</p>
-                  <p><a href="%s">%s</a></p>
-                  <p><strong>This link expires in 15 minutes.</strong></p>
-                  <hr/>
-                  <p style="font-size:12px; color:#999;">
-                    If you did not request a password reset, you can safely ignore this email.
-                    Your password will not be changed.
-                  </p>
-                </body>
-                </html>
-                """.formatted(firstName, resetUrl, resetUrl, resetUrl);
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                content = content.replace("{{" + entry.getKey() + "}}", entry.getValue());
+            }
+
+            return content;
+
+        } catch (IOException e) {
+            log.error("Failed to load email template [{}]: {}", templateName, e.getMessage());
+            // Fallback: return a plain-text body so the email still goes out
+            return variables.getOrDefault("body", "Please contact support.");
+        }
     }
 }

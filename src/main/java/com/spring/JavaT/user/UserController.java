@@ -1,22 +1,24 @@
 package com.spring.JavaT.user;
 
 import com.spring.JavaT.common.ApiResponse;
-import com.spring.JavaT.common.PageableRequest;
-import com.spring.JavaT.common.PagedResponse;
 import com.spring.JavaT.common.ResponseBuilder;
+import com.spring.JavaT.common.filter.SearchCriteria;
+import com.spring.JavaT.common.pagination.PageResponse;
+import com.spring.JavaT.common.pagination.PaginationUtil;
 import com.spring.JavaT.common.validation.ValidationGroups;
 import com.spring.JavaT.user.dto.UpdatePasswordRequest;
 import com.spring.JavaT.user.dto.UpdateProfileRequest;
 import com.spring.JavaT.user.dto.UpdateRoleRequest;
 import com.spring.JavaT.user.dto.UserDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +29,12 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * User management endpoints.
@@ -89,15 +96,43 @@ public class UserController {
     // Admin — /{id}
     // =========================================================================
 
+    /** Allowed sort fields for the user list — prevents clients probing internal field names. */
+    private static final Set<String> USER_SORT_FIELDS = Set.of(
+            "id", "firstName", "lastName", "email", "username", "role", "status", "createdAt"
+    );
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "List all users — ADMIN only")
-    public ResponseEntity<ApiResponse<PagedResponse<UserDto>>> getAllUsers(
-            @ParameterObject @Valid PageableRequest pageableRequest,
+    @Operation(summary = "List all users with optional filtering — ADMIN only")
+    public ResponseEntity<ApiResponse<PageResponse<UserDto>>> getAllUsers(
+            // Pagination params
+            @Parameter(description = "Page number (0-indexed)", example = "0")
+            @RequestParam(required = false) Integer page,
+            @Parameter(description = "Items per page (max 100)", example = "10")
+            @RequestParam(required = false) Integer size,
+            @Parameter(description = "Field to sort by", example = "createdAt")
+            @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sort direction: asc or desc", example = "desc")
+            @RequestParam(required = false) String sortDir,
+            // Filter params
+            @Parameter(description = "Filter by role: USER, MODERATOR, ADMIN")
+            @RequestParam(required = false) String role,
+            @Parameter(description = "Filter by status: ACTIVE, INACTIVE, SUSPENDED, PENDING")
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Search by first name, last name, or email (partial match)")
+            @RequestParam(required = false) String search,
             HttpServletRequest request) {
 
-        Page<UserDto> page = userService.getAllUsers(pageableRequest.toPageable());
-        return ResponseBuilder.ok(page, "Users retrieved successfully", request);
+        Pageable pageable = PaginationUtil.toPageable(page, size, sortBy, sortDir, USER_SORT_FIELDS);
+
+        List<SearchCriteria> criteria = new ArrayList<>();
+        if (role   != null && !role.isBlank())   criteria.add(new SearchCriteria("role",   SearchCriteria.Op.EQ,   role.toUpperCase()));
+        if (status != null && !status.isBlank()) criteria.add(new SearchCriteria("status", SearchCriteria.Op.EQ,   status.toUpperCase()));
+        if (search != null && !search.isBlank()) criteria.add(new SearchCriteria("email",  SearchCriteria.Op.LIKE, search));
+
+        Page<UserDto> userPage = userService.getAllUsers(criteria, pageable);
+        PageResponse<UserDto> response = PageResponse.of(userPage);
+        return ResponseBuilder.ok(response, "Users retrieved successfully", request);
     }
 
     @GetMapping("/{id}")
