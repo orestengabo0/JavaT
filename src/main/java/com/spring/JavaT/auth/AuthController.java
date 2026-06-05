@@ -7,6 +7,7 @@ import com.spring.JavaT.auth.dto.RegisterRequest;
 import com.spring.JavaT.auth.dto.ResetPasswordRequest;
 import com.spring.JavaT.common.ApiResponse;
 import com.spring.JavaT.common.ResponseBuilder;
+import com.spring.JavaT.common.swagger.PublicApiResponses;
 import com.spring.JavaT.common.validation.ValidationGroups;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Register and login endpoints")
+@Tag(name = "Authentication", description = "Register, login, password reset, and email verification")
+@PublicApiResponses
 public class AuthController {
 
     private final AuthService authService;

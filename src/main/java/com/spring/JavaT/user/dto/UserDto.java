@@ -7,14 +7,10 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Safe read-only projection of a {@link com.spring.JavaT.user.User}.
- *
- * <p>Never exposes the password hash or internal audit fields.
- * Used as the response body for all user-facing and admin endpoints.
- *
- * <p>Instances are produced by {@link com.spring.JavaT.user.UserMapper#toDto(com.spring.JavaT.user.User)}.
  */
 @Getter
 @Builder
@@ -22,21 +18,24 @@ import java.time.Instant;
 public class UserDto {
 
     @Schema(description = "User ID", example = "1")
-    private final Long id;
+    private final UUID id;
 
-    @Schema(description = "First name", example = "John")
+    @Schema(description = "First name", example = "Jean")
     private final String firstName;
 
-    @Schema(description = "Last name", example = "Doe")
+    @Schema(description = "Last name", example = "Uwimana")
     private final String lastName;
 
-    @Schema(description = "Unique username", example = "johndoe")
+    @Schema(description = "Unique username", example = "jean.uwimana")
     private final String username;
 
-    @Schema(description = "Email address", example = "john.doe@example.com")
+    @Schema(description = "Email address", example = "jean.uwimana@example.com")
     private final String email;
 
-    @Schema(description = "Assigned role", example = "USER")
+    @Schema(description = "Phone number", example = "+250788123456")
+    private final String phone;
+
+    @Schema(description = "Assigned role", example = "CUSTOMER")
     private final Role role;
 
     @Schema(description = "Account lifecycle status", example = "ACTIVE")

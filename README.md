@@ -58,8 +58,8 @@ app.jwt.secret=your-base64-encoded-secret
 
 spring.mail.username=your-email@gmail.com
 spring.mail.password=your-16-char-app-password
-app.mail.from=noreply@yourdomain.com
-app.mail.from-name=YourAppName
+app.mail.from=noreply@wasac.gov.rw
+app.mail.from-name=WASAC
 app.mail.base-url=http://localhost:8080
 ```
 
@@ -101,8 +101,8 @@ Seeded by Flyway migration `V2`. Use this to test admin endpoints immediately.
 
 | Field | Value |
 |---|---|
-| Email | `admin@javat.com` |
-| Password | *(set by your V5 migration hash)* |
+| Email | `admin@wasac.gov.rw` |
+| Password | `Admin@1234` |
 | Role | `ADMIN` |
 
 > Change this password before deploying anywhere.
@@ -540,8 +540,8 @@ app.jwt.issuer=JavaT                     # JWT iss claim
 app.security.public-paths[0]=/api/v1/auth/**   # Paths that bypass JWT
 
 # Mail
-app.mail.from=noreply@yourdomain.com
-app.mail.from-name=YourAppName
+app.mail.from=noreply@wasac.gov.rw
+app.mail.from-name=WASAC
 app.mail.base-url=http://localhost:8080  # Used to build links in emails
 
 # Async thread pool

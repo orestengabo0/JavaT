@@ -50,6 +50,10 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "email", nullable = false, unique = true, length = 254)
     private String email;
 
+    /** Must be unique across the table — enforced by a DB UNIQUE constraint. */
+    @Column(name = "phone", nullable = false, unique = true, length = 20)
+    private String phone;
+
     /** BCrypt-hashed password. Never store plain text. */
     @Column(name = "password", nullable = false)
     private String password;

@@ -1,7 +1,7 @@
 package com.spring.JavaT.user;
 
 /**
- * Application roles used for authorization.
+ * Application roles for the Utility Billing System.
  *
  * <p>Stored as strings in the database via {@code @Enumerated(EnumType.STRING)}.
  * Spring Security expects role names prefixed with {@code ROLE_} when using
@@ -9,12 +9,15 @@ package com.spring.JavaT.user;
  */
 public enum Role {
 
-    /** Standard authenticated user. */
-    USER,
+    /** Configure tariffs, approve bills, manage users and customers. */
+    ADMIN,
 
-    /** Moderator with elevated read/write access. */
-    MODERATOR,
+    /** Capture meter readings. */
+    OPERATOR,
 
-    /** Full administrative access. */
-    ADMIN
+    /** Approve bills and record payments. */
+    FINANCE,
+
+    /** View own bills, payments, and notifications. */
+    CUSTOMER
 }

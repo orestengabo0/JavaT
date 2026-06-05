@@ -1,0 +1,176 @@
+@startuml utility-billing-erd
+' =============================================================================
+' Utility Billing System — Entity Relationship Diagram (PlantUML)
+' =============================================================================
+' Export PNG:  java -jar plantuml.jar erd.puml
+' Export PDF:  java -jar plantuml.jar -tpdf erd.puml
+' Online:      https://www.plantuml.com/plantuml
+' =============================================================================
+
+!theme plain
+skinparam linetype ortho
+skinparam classBackgroundColor #FEFEFE
+skinparam classBorderColor #333333
+skinparam arrowColor #555555
+
+title Utility Billing System — Entity Relationship Diagram
+
+entity "users" as users {
+  * id : BIGINT <<PK>>
+  --
+  first_name : VARCHAR(50)
+  last_name : VARCHAR(50)
+  email : VARCHAR(254) <<UK>>
+  phone : VARCHAR(20) <<UK>>
+  password : VARCHAR(255)
+  role : VARCHAR(20)
+  status : VARCHAR(20)
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  deleted : BOOLEAN
+}
+
+entity "customers" as customers {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK, UK>>
+  full_names : VARCHAR(100)
+  national_id : VARCHAR(16) <<UK>>
+  email : VARCHAR(254) <<UK>>
+  phone : VARCHAR(20)
+  address : VARCHAR(255)
+  status : VARCHAR(20)
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  deleted : BOOLEAN
+}
+
+entity "meters" as meters {
+  * id : BIGINT <<PK>>
+  --
+  customer_id : BIGINT <<FK>>
+  meter_number : VARCHAR(20) <<UK>>
+  meter_type : VARCHAR(20)
+  installation_date : DATE
+  status : VARCHAR(20)
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  deleted : BOOLEAN
+}
+
+entity "meter_readings" as readings {
+  * id : BIGINT <<PK>>
+  --
+  meter_id : BIGINT <<FK>>
+  previous_reading : DECIMAL(12,2)
+  current_reading : DECIMAL(12,2)
+  reading_date : DATE
+  billing_month : INT
+  billing_year : INT
+  captured_by : BIGINT <<FK>>
+  created_at : TIMESTAMPTZ
+}
+
+entity "tariff_versions" as tariffs {
+  * id : BIGINT <<PK>>
+  --
+  name : VARCHAR(100)
+  meter_type : VARCHAR(20)
+  tariff_type : VARCHAR(10)
+  flat_rate : DECIMAL(12,4)
+  fixed_service_charge : DECIMAL(12,2)
+  tax_rate : DECIMAL(5,2)
+  penalty_rate : DECIMAL(5,2)
+  penalty_grace_days : INT
+  effective_from : DATE
+  effective_to : DATE
+  active : BOOLEAN
+  created_at : TIMESTAMPTZ
+}
+
+entity "tariff_tiers" as tiers {
+  * id : BIGINT <<PK>>
+  --
+  tariff_version_id : BIGINT <<FK>>
+  min_units : DECIMAL(12,2)
+  max_units : DECIMAL(12,2)
+  rate_per_unit : DECIMAL(12,4)
+}
+
+entity "bills" as bills {
+  * id : BIGINT <<PK>>
+  --
+  customer_id : BIGINT <<FK>>
+  meter_id : BIGINT <<FK>>
+  tariff_version_id : BIGINT <<FK>>
+  billing_month : INT
+  billing_year : INT
+  consumption : DECIMAL(12,2)
+  subtotal : DECIMAL(12,2)
+  tax_amount : DECIMAL(12,2)
+  penalty_amount : DECIMAL(12,2)
+  total_amount : DECIMAL(12,2)
+  amount_paid : DECIMAL(12,2)
+  balance : DECIMAL(12,2)
+  status : VARCHAR(20)
+  approved_by : BIGINT <<FK>>
+  approved_at : TIMESTAMPTZ
+  due_date : DATE
+  created_at : TIMESTAMPTZ
+}
+
+entity "payments" as payments {
+  * id : BIGINT <<PK>>
+  --
+  bill_id : BIGINT <<FK>>
+  amount_paid : DECIMAL(12,2)
+  payment_method : VARCHAR(30)
+  payment_date : DATE
+  recorded_by : BIGINT <<FK>>
+  created_at : TIMESTAMPTZ
+}
+
+entity "notifications" as notifications {
+  * id : BIGINT <<PK>>
+  --
+  customer_id : BIGINT <<FK>>
+  bill_id : BIGINT <<FK>>
+  message : TEXT
+  channel : VARCHAR(20)
+  email_sent : BOOLEAN
+  read : BOOLEAN
+  created_at : TIMESTAMPTZ
+}
+
+' --- Relationships ---
+users ||--o| customers : "user_id (0..1)"
+customers ||--|{ meters : "customer_id"
+meters ||--|{ readings : "meter_id"
+meters ||--|{ bills : "meter_id"
+customers ||--|{ bills : "customer_id"
+tariffs ||--|{ tiers : "tariff_version_id"
+tariffs ||--|{ bills : "tariff_version_id"
+bills ||--|{ payments : "bill_id"
+customers ||--|{ notifications : "customer_id"
+bills ||--o{ notifications : "bill_id"
+users ||--o{ readings : "captured_by"
+users ||--o{ bills : "approved_by"
+users ||--o{ payments : "recorded_by"
+
+note bottom of readings
+  UNIQUE (meter_id, billing_month, billing_year)
+  CHECK (current_reading > previous_reading)
+end note
+
+note bottom of bills
+  UNIQUE (meter_id, billing_month, billing_year)
+  DB TRIGGER on INSERT → notifications
+end note
+
+note bottom of payments
+  DB TRIGGER on INSERT when balance = 0
+  → UPDATE bills.status = PAID
+  → INSERT notification
+end note
+
+@enduml

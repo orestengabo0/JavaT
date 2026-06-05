@@ -1,0 +1,46 @@
+%% =============================================================================
+%% Utility Billing System — Meter Reading Capture Flow (Mermaid)
+%% =============================================================================
+%% Render:  npx @mermaid-js/mermaid-cli -i reading-capture-flow.mmd -o ../exports/reading-capture-flow.png
+%% =============================================================================
+
+sequenceDiagram
+    autonumber
+    actor OP as OPERATOR
+    participant API as MeterReadingController
+    participant SVC as MeterReadingService
+    participant MR as MeterReadingRepository
+    participant M as MeterRepository
+    participant DB as PostgreSQL
+
+    OP->>API: POST /api/v1/readings<br/>{meterId, previousReading, currentReading, readingDate}
+    API->>API: @Validated DTO<br/>(current > previous, dates, amounts)
+    API->>SVC: captureReading(request, operatorId)
+
+    SVC->>M: findById(meterId)
+    alt meter not found
+        M-->>SVC: empty
+        SVC-->>API: 404 ResourceNotFoundException
+    else meter INACTIVE
+        M-->>SVC: meter (INACTIVE)
+        SVC-->>API: 400 METER_INACTIVE
+    end
+
+    SVC->>SVC: derive billingMonth/Year from readingDate
+    SVC->>MR: existsByMeterIdAndBillingMonthAndBillingYear
+    alt duplicate reading for period
+        MR-->>SVC: true
+        SVC-->>API: 409 DUPLICATE_READING
+    end
+
+    SVC->>SVC: validate currentReading > previousReading
+    alt invalid reading order
+        SVC-->>API: 400 INVALID_READING_ORDER
+    end
+
+    SVC->>MR: save(reading)
+    MR->>DB: INSERT meter_readings
+    DB-->>MR: OK
+    MR-->>SVC: saved entity
+    SVC-->>API: MeterReadingDto
+    API-->>OP: 201 Created + ApiResponse

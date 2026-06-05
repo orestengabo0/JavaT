@@ -1,0 +1,139 @@
+%% =============================================================================
+%% Utility Billing System — Entity Relationship Diagram (Mermaid)
+%% =============================================================================
+%% Render:  npx @mermaid-js/mermaid-cli -i erd.mmd -o ../exports/erd.png
+%% Preview: https://mermaid.live  (paste this file contents)
+%% =============================================================================
+
+erDiagram
+    users ||--o| customers : "user_id (optional, 1:1)"
+    customers ||--{ meters : "owns"
+    meters ||--{ meter_readings : "has"
+    meters ||--{ bills : "billed_on"
+    customers ||--{ bills : "receives"
+    tariff_versions ||--{ tariff_tiers : "contains"
+    tariff_versions ||--{ bills : "priced_with"
+    bills ||--{ payments : "paid_by"
+    customers ||--{ notifications : "notified"
+    bills ||--o{ notifications : "triggers"
+    users ||--o{ meter_readings : "captured_by"
+    users ||--o{ bills : "approved_by"
+    users ||--o{ payments : "recorded_by"
+
+    users {
+        bigint id PK
+        varchar first_name "NOT NULL"
+        varchar last_name "NOT NULL"
+        varchar email UK "login identifier"
+        varchar phone UK "NOT NULL"
+        varchar password "BCrypt hash"
+        varchar role "ADMIN|OPERATOR|FINANCE|CUSTOMER"
+        varchar status "ACTIVE|INACTIVE|SUSPENDED|PENDING"
+        timestamptz created_at
+        timestamptz updated_at
+        boolean deleted
+    }
+
+    customers {
+        bigint id PK
+        bigint user_id FK "nullable, UNIQUE"
+        varchar full_names "NOT NULL"
+        varchar national_id UK "NOT NULL, 16 digits"
+        varchar email UK "NOT NULL"
+        varchar phone "NOT NULL"
+        varchar address "NOT NULL"
+        varchar status "ACTIVE|INACTIVE"
+        timestamptz created_at
+        timestamptz updated_at
+        boolean deleted
+    }
+
+    meters {
+        bigint id PK
+        bigint customer_id FK "NOT NULL"
+        varchar meter_number UK "NOT NULL"
+        varchar meter_type "WATER|ELECTRICITY"
+        date installation_date "NOT NULL"
+        varchar status "ACTIVE|INACTIVE"
+        timestamptz created_at
+        timestamptz updated_at
+        boolean deleted
+    }
+
+    meter_readings {
+        bigint id PK
+        bigint meter_id FK "NOT NULL"
+        decimal previous_reading "NOT NULL, >= 0"
+        decimal current_reading "NOT NULL, > previous"
+        date reading_date "NOT NULL"
+        int billing_month "1-12, derived from reading_date"
+        int billing_year "derived from reading_date"
+        bigint captured_by FK "users.id, NOT NULL"
+        timestamptz created_at
+    }
+
+    tariff_versions {
+        bigint id PK
+        varchar name "NOT NULL"
+        varchar meter_type "WATER|ELECTRICITY"
+        varchar tariff_type "FLAT|TIERED"
+        decimal flat_rate "nullable if TIERED"
+        decimal fixed_service_charge "NOT NULL, >= 0"
+        decimal tax_rate "VAT %, e.g. 18"
+        decimal penalty_rate "late payment %"
+        int penalty_grace_days "days after due date"
+        date effective_from "NOT NULL"
+        date effective_to "nullable = current version"
+        boolean active "NOT NULL"
+        timestamptz created_at
+    }
+
+    tariff_tiers {
+        bigint id PK
+        bigint tariff_version_id FK "NOT NULL"
+        decimal min_units "NOT NULL, >= 0"
+        decimal max_units "nullable = unlimited top tier"
+        decimal rate_per_unit "NOT NULL, > 0"
+    }
+
+    bills {
+        bigint id PK
+        bigint customer_id FK "NOT NULL"
+        bigint meter_id FK "NOT NULL"
+        bigint tariff_version_id FK "NOT NULL"
+        int billing_month "NOT NULL"
+        int billing_year "NOT NULL"
+        decimal consumption "current - previous"
+        decimal subtotal "consumption cost + service charge"
+        decimal tax_amount "subtotal * tax_rate"
+        decimal penalty_amount "late payment penalty"
+        decimal total_amount "subtotal + tax + penalty"
+        decimal amount_paid "default 0"
+        decimal balance "total - paid"
+        varchar status "DRAFT|PENDING|APPROVED|PAID|OVERDUE"
+        bigint approved_by FK "nullable"
+        timestamptz approved_at "nullable"
+        date due_date "NOT NULL"
+        timestamptz created_at
+    }
+
+    payments {
+        bigint id PK
+        bigint bill_id FK "NOT NULL"
+        decimal amount_paid "NOT NULL, > 0"
+        varchar payment_method "CASH|MOBILE_MONEY|BANK_TRANSFER|CARD"
+        date payment_date "NOT NULL"
+        bigint recorded_by FK "users.id, NOT NULL"
+        timestamptz created_at
+    }
+
+    notifications {
+        bigint id PK
+        bigint customer_id FK "NOT NULL"
+        bigint bill_id FK "nullable"
+        text message "NOT NULL"
+        varchar channel "IN_APP|EMAIL"
+        boolean email_sent "default false"
+        boolean read "default false"
+        timestamptz created_at
+    }

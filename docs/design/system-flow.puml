@@ -1,0 +1,91 @@
+@startuml utility-billing-system-flow
+' =============================================================================
+' Utility Billing System — Spring Boot Flow Diagram (PlantUML)
+' =============================================================================
+' Export: java -jar plantuml.jar system-flow.puml
+' =============================================================================
+
+!theme plain
+skinparam activityBackgroundColor #F8F9FA
+skinparam activityBorderColor #495057
+
+title Utility Billing System — Spring Boot Application Flow
+
+|Client|
+start
+:Send HTTP Request;
+
+|Security Layer|
+if (Path is /api/v1/auth/** ?) then (yes)
+  :Skip JWT;
+else (no)
+  :JwtAuthenticationFilter\nvalidate Bearer token;
+  if (Token valid?) then (no)
+    :SecurityEntryPoint\n401 Unauthorized;
+    stop
+  endif
+endif
+
+:@PreAuthorize role check;
+
+if (Role permitted?) then (no)
+  :AccessDeniedHandler\n403 Forbidden;
+  stop
+endif
+
+|Controller Layer|
+switch (Endpoint domain?)
+case (Authentication)
+  :AuthController;
+  :AuthService;
+case (Users)
+  :UserController;
+  :UserService;
+case (Customers / Meters)
+  :CustomerController\nMeterController;
+  :CustomerService\nMeterService;
+case (Meter Readings)
+  :MeterReadingController;
+  :MeterReadingService\n**OPERATOR only**;
+case (Tariffs)
+  :TariffController;
+  :TariffService\n**ADMIN only**;
+case (Billing)
+  :BillController;
+  :BillingService\n**ADMIN generate**\n**FINANCE approve**\n**CUSTOMER view own**;
+case (Payments)
+  :PaymentController;
+  :PaymentService\n**FINANCE record**;
+case (Notifications)
+  :NotificationController;
+  :NotificationService;
+endswitch
+
+|Service Layer|
+:Apply business rules\n(validations, status checks,\nduplicate prevention);
+
+|Persistence|
+:Spring Data JPA Repository;
+:PostgreSQL;
+
+if (Bill INSERT?) then (yes)
+  :DB Trigger\ntrigger_bill_generated_notify;
+  :INSERT into notifications;
+endif
+
+if (Payment INSERT\nand balance = 0?) then (yes)
+  :DB Trigger / Stored Procedure\nsp_mark_bill_paid;
+  :UPDATE bill status = PAID;
+  :INSERT payment notification;
+endif
+
+|Async|
+:NotificationService;
+:EmailService @Async;
+:Send email to customer;
+
+|Client|
+:ApiResponse JSON envelope;
+stop
+
+@enduml

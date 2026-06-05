@@ -1,0 +1,97 @@
+%% =============================================================================
+%% Utility Billing System — Spring Boot Application Flow (Mermaid)
+%% =============================================================================
+%% Render:  npx @mermaid-js/mermaid-cli -i system-flow.mmd -o ../exports/system-flow.png
+%% =============================================================================
+
+flowchart TB
+    subgraph Client["Client (Postman / Swagger)"]
+        REQ[HTTP Request]
+    end
+
+    subgraph SecurityLayer["Security Layer"]
+        JWT[JwtAuthenticationFilter]
+        AUTHZ{"@PreAuthorize<br/>Role Check"}
+        ENTRY[SecurityEntryPoint<br/>401 Unauthorized]
+        DENIED[AccessDeniedHandler<br/>403 Forbidden]
+    end
+
+    subgraph PublicEndpoints["Public Endpoints — no JWT"]
+        AUTH_REG["POST /api/v1/auth/register"]
+        AUTH_LOGIN["POST /api/v1/auth/login"]
+        AUTH_FORGOT["POST /api/v1/auth/forgot-password"]
+        SWAGGER["/swagger-ui/**"]
+    end
+
+    subgraph Controllers["REST Controllers"]
+        UC[UserController]
+        CC[CustomerController]
+        MC[MeterController]
+        RC[MeterReadingController]
+        TC[TariffController]
+        BC[BillController]
+        PC[PaymentController]
+        NC[NotificationController]
+    end
+
+    subgraph Services["Service Layer — Business Rules"]
+        US[UserService]
+        CS[CustomerService]
+        MS[MeterService]
+        RS[MeterReadingService]
+        TS[TariffService]
+        BS[BillingService]
+        PS[PaymentService]
+        NS[NotificationService]
+    end
+
+    subgraph Persistence["Spring Data JPA"]
+        REPO[(Repositories)]
+    end
+
+    subgraph Database["PostgreSQL"]
+        TABLES[(Tables)]
+        TRG_BILL["Trigger: trg_bill_generated_notify<br/>INSERT notification on new bill"]
+        TRG_PAY["Trigger: trg_payment_full_paid<br/>Mark PAID + notification on full payment"]
+    end
+
+    subgraph AsyncLayer["Async Messaging"]
+        EMAIL[EmailService<br/>@Async emailTaskExecutor]
+    end
+
+    REQ --> JWT
+    AUTH_REG & AUTH_LOGIN & AUTH_FORGOT --> US
+    SWAGGER --> REQ
+
+    JWT -->|valid token| AUTHZ
+    JWT -->|missing/invalid| ENTRY
+
+    AUTHZ -->|ROLE_ADMIN| TC & BC & CC & MC & UC
+    AUTHZ -->|ROLE_OPERATOR| RC & MC
+    AUTHZ -->|ROLE_FINANCE| BC & PC
+    AUTHZ -->|ROLE_CUSTOMER| BC & PC & NC
+    AUTHZ -->|denied| DENIED
+
+    UC --> US
+    CC --> CS
+    MC --> MS
+    RC --> RS
+    TC --> TS
+    BC --> BS
+    PC --> PS
+    NC --> NS
+
+    US & CS & MS & RS & TS & BS & PS --> REPO
+    REPO --> TABLES
+
+    BS -->|"generateBill()"| TRG_BILL
+    PS -->|"recordPayment()"| TRG_PAY
+    TRG_BILL --> TABLES
+    TRG_PAY --> TABLES
+
+    NS -->|"poll unsent / on save"| EMAIL
+    TRG_BILL & TRG_PAY -.->|"notification row"| NS
+
+    style SecurityLayer fill:#fff3cd
+    style Database fill:#d1ecf1
+    style AsyncLayer fill:#d4edda

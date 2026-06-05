@@ -32,7 +32,7 @@ public interface AuthMapper {
      * <p>Excluded fields — set by {@link AuthService} after this call:
      * <ul>
      *   <li>{@code password} — must be BCrypt-encoded before assignment</li>
-     *   <li>{@code role}     — always {@link com.spring.JavaT.user.Role#USER} for self-registration</li>
+     *   <li>{@code role}     — always {@link com.spring.JavaT.user.Role#CUSTOMER} for self-registration</li>
      * </ul>
      * All {@link com.spring.JavaT.common.BaseEntity} audit fields (id, createdAt, etc.)
      * are excluded because they are managed by JPA and the auditing listener.

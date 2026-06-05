@@ -1,0 +1,43 @@
+%% =============================================================================
+%% Utility Billing System — Bill Lifecycle & Payment Flow (Mermaid)
+%% =============================================================================
+%% Render:  npx @mermaid-js/mermaid-cli -i bill-lifecycle.mmd -o ../exports/bill-lifecycle.png
+%% =============================================================================
+
+stateDiagram-v2
+    [*] --> DRAFT: Admin generates bill<br/>(reading + tariff applied)
+
+    DRAFT --> PENDING: Submit for approval
+    PENDING --> APPROVED: ADMIN / FINANCE approves
+    PENDING --> DRAFT: Reject / revise
+
+    APPROVED --> PARTIAL: Partial payment recorded
+    PARTIAL --> PARTIAL: More partial payments
+    PARTIAL --> PAID: balance = 0<br/>(DB trigger + notification)
+
+    APPROVED --> PAID: Full payment recorded<br/>(DB trigger + notification)
+    APPROVED --> OVERDUE: Past due_date<br/>with balance > 0
+
+    OVERDUE --> PARTIAL: Partial payment
+    OVERDUE --> PAID: Full payment
+
+    PAID --> [*]
+
+    note right of DRAFT
+        Customer must be ACTIVE
+        Meter must be ACTIVE
+        One bill per meter/month/year
+    end note
+
+    note right of APPROVED
+        DB Trigger on INSERT (bill):
+        "Dear CustomerName,
+        Your Month/Year utility bill
+        of Amount FRW has been processed."
+    end note
+
+    note right of PAID
+        DB Trigger on full payment:
+        Update status = PAID
+        Insert payment confirmation notification
+    end note

@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Stores a time-limited token used to verify a user's email address.
@@ -38,8 +39,9 @@ import java.time.Instant;
 public class EmailVerificationToken {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    private UUID id;
 
     /** The opaque token sent in the verification email link. */
     @Column(name = "token", nullable = false, unique = true, length = 64)

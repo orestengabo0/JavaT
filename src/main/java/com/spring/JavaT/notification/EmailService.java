@@ -117,6 +117,31 @@ public class EmailService {
      * @param firstName recipient's first name for personalisation
      * @param token     the password reset token (appended to the reset URL)
      */
+    /**
+     * Sends a utility bill or payment notification email using the bill-notification template.
+     *
+     * @param toEmail      customer email address
+     * @param customerName customer full name for greeting
+     * @param message      notification message inserted by the DB trigger
+     */
+    @Async("emailTaskExecutor")
+    public void sendBillNotificationEmail(String toEmail, String customerName, String message) {
+        String body = loadTemplate("bill-notification.html", Map.of(
+                "appName",      mailProperties.getFromName(),
+                "customerName", customerName,
+                "message",      message,
+                "portalUrl",    mailProperties.getBaseUrl()
+        ));
+
+        send(EmailRequest.builder()
+                .to(toEmail)
+                .toName(customerName)
+                .subject(mailProperties.getFromName() + " — Billing Notification")
+                .body(body)
+                .html(true)
+                .build());
+    }
+
     @Async("emailTaskExecutor")
     public void sendPasswordResetEmail(String toEmail, String firstName, String token) {
         String resetUrl = mailProperties.getBaseUrl()

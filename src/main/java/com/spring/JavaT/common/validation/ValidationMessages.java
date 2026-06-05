@@ -65,6 +65,30 @@ public final class ValidationMessages {
     public static final String USERNAME_REQUIRED    = "Username is required";
     public static final String USERNAME_TOO_SHORT   = "Username must be at least 3 characters";
     public static final String USERNAME_TOO_LONG    = "Username must not exceed 50 characters";
+    public static final String USERNAME_INVALID     =
+            "Username must be 3–50 characters, contain at least one letter, "
+            + "and use only letters, digits, dots, hyphens, or underscores";
+
+    public static final String PERSON_NAME_INVALID  =
+            "Must be a valid name containing letters; numbers-only values are not allowed";
+
+    public static final String PHONE_REQUIRED       = "Phone number is required";
+
+    public static final String NATIONAL_ID_REQUIRED = "National ID is required";
+    public static final String NATIONAL_ID_INVALID  = "National ID must be exactly 16 digits";
+
+    public static final String ADDRESS_REQUIRED     = "Address is required";
+    public static final String ADDRESS_INVALID      =
+            "Address must be 5–255 characters and look like a real address (not numbers only)";
+
+    public static final String METER_NUMBER_INVALID =
+            "Meter number must be 6–20 uppercase letters, digits, or hyphens";
+
+    public static final String READING_ORDER_INVALID =
+            "Current reading must be greater than previous reading";
+
+    public static final String ROLE_REQUIRED        = "Role is required";
+    public static final String ROLE_INVALID         = "Invalid role. Accepted values are: ADMIN, OPERATOR, FINANCE, CUSTOMER";
 
     // -------------------------------------------------------------------------
     // Numeric / range
@@ -98,5 +122,5 @@ public final class ValidationMessages {
     // -------------------------------------------------------------------------
     // Phone
     // -------------------------------------------------------------------------
-    public static final String PHONE_INVALID       = "Must be a valid phone number (e.g. +1234567890)";
+    public static final String PHONE_INVALID       = "Must be a valid phone number (e.g. +250788123456 or 0788123456)";
 }

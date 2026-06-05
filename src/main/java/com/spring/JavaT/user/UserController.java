@@ -6,10 +6,13 @@ import com.spring.JavaT.common.filter.SearchCriteria;
 import com.spring.JavaT.common.pagination.PageResponse;
 import com.spring.JavaT.common.pagination.PaginationUtil;
 import com.spring.JavaT.common.validation.ValidationGroups;
+import com.spring.JavaT.user.dto.CreateUserRequest;
 import com.spring.JavaT.user.dto.UpdatePasswordRequest;
 import com.spring.JavaT.user.dto.UpdateProfileRequest;
 import com.spring.JavaT.user.dto.UpdateRoleRequest;
 import com.spring.JavaT.user.dto.UserDto;
+import com.spring.JavaT.common.swagger.StandardApiResponses;
+import com.spring.JavaT.security.SecurityRoles;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,6 +30,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * User management endpoints.
@@ -52,6 +57,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "Profile, role, and account management")
 @SecurityRequirement(name = "bearerAuth")
+@StandardApiResponses
 public class UserController {
 
     private final UserService userService;
@@ -98,11 +104,22 @@ public class UserController {
 
     /** Allowed sort fields for the user list — prevents clients probing internal field names. */
     private static final Set<String> USER_SORT_FIELDS = Set.of(
-            "id", "firstName", "lastName", "email", "username", "role", "status", "createdAt"
+            "id", "firstName", "lastName", "email", "phone", "username", "role", "status", "createdAt"
     );
 
+    @PostMapping
+    @PreAuthorize(SecurityRoles.ADMIN)
+    @Operation(summary = "Create a new user with a specific role — ADMIN only")
+    public ResponseEntity<ApiResponse<UserDto>> createUser(
+            @Validated(ValidationGroups.OnCreate.class) @RequestBody CreateUserRequest body,
+            HttpServletRequest request) {
+
+        UserDto dto = userService.createUser(body);
+        return ResponseBuilder.created(dto, "User created successfully", request);
+    }
+
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityRoles.ADMIN)
     @Operation(summary = "List all users with optional filtering — ADMIN only")
     public ResponseEntity<ApiResponse<PageResponse<UserDto>>> getAllUsers(
             // Pagination params
@@ -115,7 +132,7 @@ public class UserController {
             @Parameter(description = "Sort direction: asc or desc", example = "desc")
             @RequestParam(required = false) String sortDir,
             // Filter params
-            @Parameter(description = "Filter by role: USER, MODERATOR, ADMIN")
+            @Parameter(description = "Filter by role: ADMIN, OPERATOR, FINANCE, CUSTOMER")
             @RequestParam(required = false) String role,
             @Parameter(description = "Filter by status: ACTIVE, INACTIVE, SUSPENDED, PENDING")
             @RequestParam(required = false) String status,
@@ -136,10 +153,10 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityRoles.ADMIN)
     @Operation(summary = "Get any user by ID — ADMIN only")
     public ResponseEntity<ApiResponse<UserDto>> getUserById(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             HttpServletRequest request) {
 
         UserDto dto = userService.getUserById(id);
@@ -147,10 +164,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/role")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityRoles.ADMIN)
     @Operation(summary = "Change a user's role — ADMIN only")
     public ResponseEntity<ApiResponse<UserDto>> updateRole(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateRoleRequest body,
             HttpServletRequest request) {
 
@@ -159,10 +176,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityRoles.ADMIN)
     @Operation(summary = "Soft-deactivate a user account — ADMIN only")
     public ResponseEntity<ApiResponse<UserDto>> deactivateUser(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal UserDetails principal,
             HttpServletRequest request) {
 
@@ -171,10 +188,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityRoles.ADMIN)
     @Operation(summary = "Restore a deactivated user account — ADMIN only")
     public ResponseEntity<ApiResponse<UserDto>> activateUser(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             HttpServletRequest request) {
 
         UserDto dto = userService.activateUser(id);

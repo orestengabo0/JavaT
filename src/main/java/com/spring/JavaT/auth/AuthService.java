@@ -73,11 +73,14 @@ public class AuthService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("User", "username", request.getUsername());
         }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new DuplicateResourceException("User", "phone", request.getPhone());
+        }
 
         // Map all simple fields; password and role are set explicitly below
         User user = authMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.USER);
+        user.setRole(Role.CUSTOMER);
         // New accounts start as PENDING until email is verified
         user.setStatus(com.spring.JavaT.common.EntityStatus.PENDING);
 

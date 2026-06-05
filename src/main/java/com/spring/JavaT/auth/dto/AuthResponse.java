@@ -33,6 +33,6 @@ public class AuthResponse {
     @Schema(description = "Authenticated user's email", example = "john.doe@example.com")
     private final String email;
 
-    @Schema(description = "Authenticated user's role", example = "USER")
+    @Schema(description = "Authenticated user's role", example = "CUSTOMER")
     private final String role;
 }

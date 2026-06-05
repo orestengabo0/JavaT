@@ -8,17 +8,16 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Request body for changing a user's role (PATCH /users/{id}/role).
- * Admin-only operation.
+ * Request body for changing a user's role (PATCH /users/{id}/role). Admin only.
  */
 @Getter
 @Setter
 @Schema(description = "Request body for updating a user's role")
 public class UpdateRoleRequest {
 
-    @Schema(description = "New role to assign", example = "MODERATOR",
-            allowableValues = {"USER", "MODERATOR", "ADMIN"})
+    @Schema(description = "New role to assign", example = "OPERATOR",
+            allowableValues = {"ADMIN", "OPERATOR", "FINANCE", "CUSTOMER"})
     @NotNull(message = "Role is required")
-    @ValidEnum(enumClass = Role.class, message = "Invalid role. Accepted values: USER, MODERATOR, ADMIN")
+    @ValidEnum(enumClass = Role.class, message = "Invalid role. Accepted values: ADMIN, OPERATOR, FINANCE, CUSTOMER")
     private String role;
 }

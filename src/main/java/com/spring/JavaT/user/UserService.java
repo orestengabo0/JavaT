@@ -1,10 +1,12 @@
 package com.spring.JavaT.user;
 
+import com.spring.JavaT.common.EntityStatus;
 import com.spring.JavaT.common.filter.BaseSpecification;
 import com.spring.JavaT.common.filter.SearchCriteria;
 import com.spring.JavaT.exception.DuplicateResourceException;
 import com.spring.JavaT.exception.ForbiddenException;
 import com.spring.JavaT.exception.ResourceNotFoundException;
+import com.spring.JavaT.user.dto.CreateUserRequest;
 import com.spring.JavaT.user.dto.UpdatePasswordRequest;
 import com.spring.JavaT.user.dto.UpdateProfileRequest;
 import com.spring.JavaT.user.dto.UpdateRoleRequest;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 /**
  * Business logic for all user management operations.
  *
@@ -68,6 +71,15 @@ public class UserService {
         if (request.getLastName() != null) {
             user.setLastName(request.getLastName().strip());
         }
+        if (request.getPhone() != null) {
+            String newPhone = request.getPhone().strip();
+            if (!newPhone.equals(user.getPhone())) {
+                if (userRepository.existsByPhone(newPhone)) {
+                    throw new DuplicateResourceException("User", "phone", newPhone);
+                }
+                user.setPhone(newPhone);
+            }
+        }
         if (request.getUsername() != null) {
             String newUsername = request.getUsername().strip();
             if (!newUsername.equals(user.getDisplayUsername())) {
@@ -105,6 +117,41 @@ public class UserService {
     // -------------------------------------------------------------------------
 
     /**
+     * Creates a new user account with an admin-assigned role. Admin only.
+     *
+     * <p>Staff accounts are activated immediately ({@link EntityStatus#ACTIVE}).
+     * Customer accounts also start active when created by an admin.
+     *
+     * @param request the new user details including role
+     * @throws DuplicateResourceException if email, username, or phone is taken
+     */
+    @Transactional
+    public UserDto createUser(CreateUserRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("User", "email", request.getEmail());
+        }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("User", "username", request.getUsername());
+        }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new DuplicateResourceException("User", "phone", request.getPhone());
+        }
+
+        User user = User.builder()
+                .firstName(request.getFirstName().strip())
+                .lastName(request.getLastName().strip())
+                .email(request.getEmail().strip().toLowerCase())
+                .phone(request.getPhone().strip())
+                .username(request.getUsername().strip())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.valueOf(request.getRole()))
+                .build();
+        user.setStatus(EntityStatus.ACTIVE);
+
+        return userMapper.toDto(userRepository.save(user));
+    }
+
+    /**
      * Returns a paginated, optionally filtered list of all users. Admin only.
      *
      * @param criteria list of filter conditions (empty = no filter)
@@ -122,7 +169,7 @@ public class UserService {
      * @throws ResourceNotFoundException if no user with that ID exists
      */
     @Transactional(readOnly = true)
-    public UserDto getUserById(Long id) {
+    public UserDto getUserById(UUID id) {
         return userMapper.toDto(findByIdOrThrow(id));
     }
 
@@ -134,7 +181,7 @@ public class UserService {
      * @throws ResourceNotFoundException if no user with that ID exists
      */
     @Transactional
-    public UserDto updateRole(Long id, UpdateRoleRequest request) {
+    public UserDto updateRole(UUID id, UpdateRoleRequest request) {
         User user = findByIdOrThrow(id);
         user.setRole(Role.valueOf(request.getRole()));
         return userMapper.toDto(userRepository.save(user));
@@ -153,7 +200,7 @@ public class UserService {
      * @throws ResourceNotFoundException if no user with that ID exists
      */
     @Transactional
-    public UserDto deactivateUser(Long id, String adminEmail) {
+    public UserDto deactivateUser(UUID id, String adminEmail) {
         User user = findByIdOrThrow(id);
         user.softDelete(adminEmail);
         return userMapper.toDto(userRepository.save(user));
@@ -166,7 +213,7 @@ public class UserService {
      * @throws ResourceNotFoundException if no user with that ID exists
      */
     @Transactional
-    public UserDto activateUser(Long id) {
+    public UserDto activateUser(UUID id) {
         User user = findByIdOrThrow(id);
         user.restore();
         return userMapper.toDto(userRepository.save(user));
@@ -181,7 +228,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
     }
 
-    private User findByIdOrThrow(Long id) {
+    private User findByIdOrThrow(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
     }

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Data access layer for {@link User} entities.
@@ -17,8 +18,10 @@ import java.util.Optional;
  * if you want that behaviour globally, or use explicit {@code findByDeletedFalse}
  * variants for specific queries.
  */
+import java.util.UUID;
+
 @Repository
-public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
     Optional<User> findByEmail(String email);
 
@@ -27,4 +30,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByEmail(String email);
 
     boolean existsByUsername(String username);
+
+    boolean existsByPhone(String phone);
 }
