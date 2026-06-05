@@ -22,6 +22,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -111,5 +114,17 @@ public class TariffController {
             HttpServletRequest request) {
 
         return ResponseBuilder.ok(tariffService.getTariffById(id), "Tariff retrieved successfully", request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize(SecurityRoles.ADMIN)
+    @Operation(summary = "Soft-delete a tariff version not linked to any bill — ADMIN only")
+    public ResponseEntity<ApiResponse<TariffVersionDto>> deleteTariff(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails principal,
+            HttpServletRequest request) {
+
+        TariffVersionDto dto = tariffService.deleteTariff(id, principal.getUsername());
+        return ResponseBuilder.ok(dto, "Tariff deleted successfully", request);
     }
 }

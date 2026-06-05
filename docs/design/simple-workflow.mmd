@@ -1,0 +1,18 @@
+%% =============================================================================
+%% WASAC Utility Billing — Simple business workflow (5 steps)
+%% =============================================================================
+
+flowchart LR
+    S1[1. Register customer & meter]
+    S2[2. Capture reading]
+    S3[3. Generate & approve bill]
+    S4[4. Record payment]
+    S5[5. Customer views bill]
+
+    S1 --> S2 --> S3 --> S4 --> S5
+
+    style S1 fill:#ffcdd2
+    style S2 fill:#c8e6c9
+    style S3 fill:#fff9c4
+    style S4 fill:#bbdefb
+    style S5 fill:#e1bee7

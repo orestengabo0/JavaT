@@ -20,8 +20,9 @@ echo ""
 MERMAID_FILES=(
   "erd.mmd"
   "system-flow.mmd"
+  "simple-workflow.mmd"
+  "simple-roles.mmd"
   "bill-lifecycle.mmd"
-  "reading-capture-flow.mmd"
 )
 
 PLANTUML_FILES=(

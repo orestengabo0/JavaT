@@ -37,8 +37,9 @@ Write-Host ""
 $mermaidFiles = @(
     "erd.mmd",
     "system-flow.mmd",
-    "bill-lifecycle.mmd",
-    "reading-capture-flow.mmd"
+    "simple-workflow.mmd",
+    "simple-roles.mmd",
+    "bill-lifecycle.mmd"
 )
 
 function Invoke-MermaidExport {

@@ -1,0 +1,37 @@
+%% =============================================================================
+%% WASAC Utility Billing — End-to-end billing sequence (happy path)
+%% =============================================================================
+
+sequenceDiagram
+    autonumber
+    actor Admin
+    actor Operator
+    actor Finance
+    actor Customer
+    participant API as REST API
+    participant DB as PostgreSQL
+
+    Note over Admin,DB: Setup (once per customer)
+    Admin->>API: Register customer (+ optional userId link)
+    Admin->>API: Attach meter to customer
+    Admin->>API: Create tariff (FLAT or TIERED)
+
+    Note over Operator,DB: Monthly operations
+    Operator->>API: Capture meter reading
+    API->>DB: Save reading
+
+    Admin->>API: Generate bill for meter + period
+    API->>DB: Insert bill (PENDING)
+    DB-->>DB: Trigger: bill notification
+
+    Finance->>API: Approve bill
+    API->>DB: Update status → APPROVED
+
+    Finance->>API: Record payment (partial or full)
+    API->>DB: Insert payment, reduce balance
+    alt Balance = 0
+        DB-->>DB: Trigger: bill → PAID + payment notification
+    end
+
+    Customer->>API: View bills, payments, notifications
+    Customer->>API: Mark notification as read

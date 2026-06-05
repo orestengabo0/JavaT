@@ -119,7 +119,7 @@ public class CustomerController {
 
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize(SecurityRoles.ADMIN)
-    @Operation(summary = "Deactivate a customer — ADMIN only")
+    @Operation(summary = "Deactivate a customer (soft-delete) — ADMIN only")
     public ResponseEntity<ApiResponse<CustomerDto>> deactivateCustomer(
             @PathVariable UUID id,
             @AuthenticationPrincipal UserDetails principal,

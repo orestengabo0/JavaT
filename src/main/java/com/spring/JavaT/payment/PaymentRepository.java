@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpecificationExecutor<Payment> {
 
     boolean existsByReferenceNumber(String referenceNumber);
+
+    boolean existsByBill_Id(UUID billId);
 }

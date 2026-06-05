@@ -153,7 +153,7 @@ public class CustomerService {
 
     @Transactional
     public CustomerDto activateCustomer(UUID id) {
-        Customer customer = findByIdOrThrow(id);
+        Customer customer = findByIdIncludingDeletedOrThrow(id);
         customer.restore();
         return customerMapper.toDto(customerRepository.save(customer));
     }
@@ -208,6 +208,12 @@ public class CustomerService {
     public Customer findByIdOrThrow(UUID id) {
         return customerRepository.findById(id)
                 .filter(c -> !c.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", id));
+    }
+
+    /** Used by activate — deactivated customers are soft-deleted and hidden from normal lookups. */
+    private Customer findByIdIncludingDeletedOrThrow(UUID id) {
+        return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", "id", id));
     }
 

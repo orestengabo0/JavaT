@@ -24,6 +24,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -85,6 +86,18 @@ public class BillController {
 
         BillDto dto = billingService.cancelBill(id);
         return ResponseBuilder.ok(dto, "Bill cancelled successfully", request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize(SecurityRoles.ADMIN)
+    @Operation(summary = "Soft-delete a pending or cancelled bill — ADMIN only")
+    public ResponseEntity<ApiResponse<BillDto>> deleteBill(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails principal,
+            HttpServletRequest request) {
+
+        BillDto dto = billingService.deleteBill(id, principal.getUsername());
+        return ResponseBuilder.ok(dto, "Bill deleted successfully", request);
     }
 
     @GetMapping

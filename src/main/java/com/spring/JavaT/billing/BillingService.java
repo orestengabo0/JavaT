@@ -15,6 +15,7 @@ import com.spring.JavaT.reading.MeterReadingService;
 import com.spring.JavaT.billing.dto.BillDto;
 import com.spring.JavaT.billing.dto.GenerateBillRequest;
 import com.spring.JavaT.notification.NotificationDispatchTrigger;
+import com.spring.JavaT.payment.PaymentRepository;
 import com.spring.JavaT.tariff.TariffService;
 import com.spring.JavaT.tariff.TariffVersion;
 import com.spring.JavaT.user.Role;
@@ -42,6 +43,7 @@ import java.util.UUID;
 public class BillingService {
 
     private final BillRepository         billRepository;
+    private final PaymentRepository      paymentRepository;
     private final CustomerService        customerService;
     private final CustomerRepository     customerRepository;
     private final MeterService           meterService;
@@ -139,6 +141,34 @@ public class BillingService {
         bill.setBillStatus(BillStatus.CANCELLED);
         bill.setBalance(BigDecimal.ZERO);
 
+        return billMapper.toDto(billRepository.save(bill));
+    }
+
+    /**
+     * Soft-deletes a bill that was never financially active (PENDING or CANCELLED only).
+     * Frees the billing period for re-generation when the bill is removed from lists.
+     */
+    @Transactional
+    public BillDto deleteBill(UUID billId, String adminEmail) {
+        Bill bill = findByIdOrThrow(billId);
+
+        if (bill.getBillStatus() != BillStatus.PENDING && bill.getBillStatus() != BillStatus.CANCELLED) {
+            throw new BusinessException(
+                    "Only pending or cancelled bills can be deleted",
+                    HttpStatus.BAD_REQUEST,
+                    "BILL_NOT_DELETABLE"
+            );
+        }
+
+        if (paymentRepository.existsByBill_Id(billId)) {
+            throw new BusinessException(
+                    "Bills with recorded payments cannot be deleted",
+                    HttpStatus.CONFLICT,
+                    "BILL_HAS_PAYMENTS"
+            );
+        }
+
+        bill.softDelete(adminEmail);
         return billMapper.toDto(billRepository.save(bill));
     }
 

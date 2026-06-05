@@ -79,7 +79,7 @@ public class MeterService {
 
     @Transactional
     public MeterDto activateMeter(UUID id) {
-        Meter meter = findByIdOrThrow(id);
+        Meter meter = findByIdIncludingDeletedOrThrow(id);
         meter.restore();
         return meterMapper.toDto(meterRepository.save(meter));
     }
@@ -106,6 +106,11 @@ public class MeterService {
     public Meter findByIdOrThrow(UUID id) {
         return meterRepository.findById(id)
                 .filter(m -> !m.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Meter", "id", id));
+    }
+
+    private Meter findByIdIncludingDeletedOrThrow(UUID id) {
+        return meterRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Meter", "id", id));
     }
 }

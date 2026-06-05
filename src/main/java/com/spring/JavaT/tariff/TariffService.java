@@ -1,5 +1,6 @@
 package com.spring.JavaT.tariff;
 
+import com.spring.JavaT.billing.BillRepository;
 import com.spring.JavaT.common.filter.BaseSpecification;
 import com.spring.JavaT.common.filter.SearchCriteria;
 import com.spring.JavaT.exception.BusinessException;
@@ -33,6 +34,7 @@ public class TariffService {
     private static final int MONEY_SCALE = 2;
 
     private final TariffVersionRepository tariffVersionRepository;
+    private final BillRepository          billRepository;
     private final TariffMapper            tariffMapper;
 
     // -------------------------------------------------------------------------
@@ -95,6 +97,26 @@ public class TariffService {
     @Transactional(readOnly = true)
     public TariffVersionDto getTariffById(UUID id) {
         return tariffMapper.toDto(findByIdOrThrow(id));
+    }
+
+    /**
+     * Soft-deletes a tariff version that is not referenced by any bill.
+     */
+    @Transactional
+    public TariffVersionDto deleteTariff(UUID id, String adminEmail) {
+        TariffVersion tariff = findByIdOrThrow(id);
+
+        if (billRepository.existsByTariffVersion_Id(id)) {
+            throw new BusinessException(
+                    "Tariff versions linked to bills cannot be deleted",
+                    HttpStatus.CONFLICT,
+                    "TARIFF_IN_USE"
+            );
+        }
+
+        tariff.setActive(false);
+        tariff.softDelete(adminEmail);
+        return tariffMapper.toDto(tariffVersionRepository.save(tariff));
     }
 
     // -------------------------------------------------------------------------

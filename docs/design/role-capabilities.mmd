@@ -1,0 +1,39 @@
+%% =============================================================================
+%% WASAC Utility Billing — What each role can do
+%% =============================================================================
+
+flowchart LR
+    subgraph ADMIN["ADMIN"]
+        A1[Manage users]
+        A2[Register customers & meters]
+        A3[Configure tariffs]
+        A4[Generate bills]
+        A5[Cancel pending bills]
+        A6[Record payments]
+        A7[List all notifications]
+    end
+
+    subgraph OPERATOR["OPERATOR"]
+        O1[Capture meter readings]
+        O2[List meters & readings]
+    end
+
+    subgraph FINANCE["FINANCE"]
+        F1[List customers]
+        F2[Approve bills]
+        F3[Record payments]
+        F4[View tariffs & bills]
+    end
+
+    subgraph CUSTOMER["CUSTOMER"]
+        C1[Register & login]
+        C2[Update own profile]
+        C3[View own bills]
+        C4[View own payments]
+        C5[View & mark notifications read]
+    end
+
+    style ADMIN fill:#ffebee
+    style OPERATOR fill:#e8f5e9
+    style FINANCE fill:#e3f2fd
+    style CUSTOMER fill:#f3e5f5

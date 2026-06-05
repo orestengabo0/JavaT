@@ -33,4 +33,6 @@ public interface BillRepository extends JpaRepository<Bill, UUID>, JpaSpecificat
     Optional<Bill> findLatestBeforePeriod(@Param("meterId") UUID meterId,
                                           @Param("month") int month,
                                           @Param("year") int year);
+
+    boolean existsByTariffVersion_Id(UUID tariffVersionId);
 }

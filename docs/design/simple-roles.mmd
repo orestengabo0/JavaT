@@ -1,0 +1,16 @@
+%% =============================================================================
+%% WASAC Utility Billing — Who does what (one line each)
+%% =============================================================================
+
+flowchart TB
+    ADMIN["Admin — setup & generate bills"]
+    OPERATOR["Operator — capture readings"]
+    FINANCE["Finance — approve bills & record payments"]
+    CUSTOMER["Customer — view bills & notifications"]
+
+    ADMIN ~~~ OPERATOR ~~~ FINANCE ~~~ CUSTOMER
+
+    style ADMIN fill:#ffcdd2
+    style OPERATOR fill:#c8e6c9
+    style FINANCE fill:#bbdefb
+    style CUSTOMER fill:#e1bee7
