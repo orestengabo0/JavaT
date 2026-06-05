@@ -13,6 +13,8 @@ import com.spring.JavaT.customer.dto.UpdateCustomerRequest;
 import com.spring.JavaT.meter.dto.CreateMeterRequest;
 import com.spring.JavaT.meter.dto.MeterDto;
 import com.spring.JavaT.meter.MeterService;
+import com.spring.JavaT.reading.MeterReadingService;
+import com.spring.JavaT.reading.dto.MeterReadingDto;
 import com.spring.JavaT.common.swagger.StandardApiResponses;
 import com.spring.JavaT.security.SecurityRoles;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,11 +52,20 @@ import java.util.UUID;
 @StandardApiResponses
 public class CustomerController {
 
-    private final CustomerService customerService;
-    private final MeterService    meterService;
+    private final CustomerService     customerService;
+    private final MeterService        meterService;
+    private final MeterReadingService meterReadingService;
 
     private static final Set<String> CUSTOMER_SORT_FIELDS = Set.of(
             "id", "fullNames", "nationalId", "email", "phone", "status", "createdAt"
+    );
+
+    private static final Set<String> METER_SORT_FIELDS = Set.of(
+            "id", "meterNumber", "meterType", "installationDate", "status", "createdAt"
+    );
+
+    private static final Set<String> READING_SORT_FIELDS = Set.of(
+            "id", "readingDate", "billingMonth", "billingYear", "currentReading", "createdAt"
     );
 
     @PostMapping
@@ -94,6 +105,77 @@ public class CustomerController {
 
         Page<CustomerDto> customerPage = customerService.getAllCustomers(criteria, pageable);
         return ResponseBuilder.ok(PageResponse.of(customerPage), "Customers retrieved successfully", request);
+    }
+
+    @GetMapping("/me/meters")
+    @PreAuthorize(SecurityRoles.CUSTOMER)
+    @Operation(summary = "List meters assigned to the authenticated customer — CUSTOMER only")
+    public ResponseEntity<ApiResponse<PageResponse<MeterDto>>> getMyMeters(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir,
+            @Parameter(description = "Filter by meter type: WATER, ELECTRICITY")
+            @RequestParam(required = false) String meterType,
+            @Parameter(description = "Filter by status: ACTIVE, INACTIVE")
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal UserDetails principal,
+            HttpServletRequest request) {
+
+        Pageable pageable = PaginationUtil.toPageable(page, size, sortBy, sortDir, METER_SORT_FIELDS);
+
+        List<SearchCriteria> criteria = new ArrayList<>();
+        if (meterType != null && !meterType.isBlank()) {
+            criteria.add(new SearchCriteria("meterType", SearchCriteria.Op.EQ, meterType.toUpperCase()));
+        }
+        if (status != null && !status.isBlank()) {
+            criteria.add(new SearchCriteria("status", SearchCriteria.Op.EQ, status.toUpperCase()));
+        }
+
+        Page<MeterDto> meterPage = meterService.getMetersForPortalUser(
+                principal.getUsername(),
+                criteria,
+                pageable
+        );
+
+        return ResponseBuilder.ok(PageResponse.of(meterPage), "Meters retrieved successfully", request);
+    }
+
+    @GetMapping("/me/readings")
+    @PreAuthorize(SecurityRoles.CUSTOMER)
+    @Operation(summary = "List meter readings for the authenticated customer — CUSTOMER only")
+    public ResponseEntity<ApiResponse<PageResponse<MeterReadingDto>>> getMyReadings(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir,
+            @Parameter(description = "Filter by meter ID (must belong to the customer)")
+            @RequestParam(required = false) UUID meterId,
+            @Parameter(description = "Filter by billing month (1–12)")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Filter by billing year")
+            @RequestParam(required = false) Integer year,
+            @AuthenticationPrincipal UserDetails principal,
+            HttpServletRequest request) {
+
+        Pageable pageable = PaginationUtil.toPageable(page, size, sortBy, sortDir, READING_SORT_FIELDS);
+
+        List<SearchCriteria> criteria = new ArrayList<>();
+        if (month != null) {
+            criteria.add(new SearchCriteria("billingMonth", SearchCriteria.Op.EQ, month));
+        }
+        if (year != null) {
+            criteria.add(new SearchCriteria("billingYear", SearchCriteria.Op.EQ, year));
+        }
+
+        Page<MeterReadingDto> readingPage = meterReadingService.getReadingsForPortalUser(
+                principal.getUsername(),
+                meterId,
+                criteria,
+                pageable
+        );
+
+        return ResponseBuilder.ok(PageResponse.of(readingPage), "Readings retrieved successfully", request);
     }
 
     @GetMapping("/{id}")

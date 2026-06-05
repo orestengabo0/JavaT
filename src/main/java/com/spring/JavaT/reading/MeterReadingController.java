@@ -52,7 +52,7 @@ public class MeterReadingController {
 
     @PostMapping
     @PreAuthorize(SecurityRoles.OPERATOR)
-    @Operation(summary = "Capture a meter reading — OPERATOR only")
+    @Operation(summary = "Capture a meter reading — OPERATOR only. Previous reading is resolved automatically from the last capture.")
     public ResponseEntity<ApiResponse<MeterReadingDto>> captureReading(
             @Validated(ValidationGroups.OnCreate.class) @RequestBody CreateMeterReadingRequest body,
             @AuthenticationPrincipal UserDetails principal,

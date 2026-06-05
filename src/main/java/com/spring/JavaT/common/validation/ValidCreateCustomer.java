@@ -10,8 +10,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Ensures {@link com.spring.JavaT.customer.dto.CreateCustomerRequest} is complete
- * for either the linked-user path ({@code userId}) or the manual entry path.
+ * Ensures {@link com.spring.JavaT.customer.dto.CreateCustomerRequest} includes
+ * {@code userId}, {@code nationalId}, and {@code address}.
  */
 @Documented
 @Constraint(validatedBy = ValidCreateCustomerValidator.class)

@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,6 +64,23 @@ public class MeterService {
     public Page<MeterDto> getAllMeters(List<SearchCriteria> criteria, Pageable pageable) {
         Specification<Meter> spec = new MeterSpecification(criteria);
         return meterRepository.findAll(spec, pageable).map(meterMapper::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MeterDto> getMetersForPortalUser(
+            String email,
+            List<SearchCriteria> extraCriteria,
+            Pageable pageable) {
+
+        Customer customer = customerService.requireLinkedCustomerForPortalUser(email);
+
+        List<SearchCriteria> criteria = new ArrayList<>();
+        criteria.add(new SearchCriteria("customer.id", SearchCriteria.Op.EQ, customer.getId()));
+        if (extraCriteria != null) {
+            criteria.addAll(extraCriteria);
+        }
+
+        return getAllMeters(criteria, pageable);
     }
 
     @Transactional(readOnly = true)

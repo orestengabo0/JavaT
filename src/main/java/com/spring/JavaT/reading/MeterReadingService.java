@@ -2,6 +2,8 @@ package com.spring.JavaT.reading;
 
 import com.spring.JavaT.common.filter.BaseSpecification;
 import com.spring.JavaT.common.filter.SearchCriteria;
+import com.spring.JavaT.customer.Customer;
+import com.spring.JavaT.customer.CustomerService;
 import com.spring.JavaT.exception.BusinessException;
 import com.spring.JavaT.exception.ResourceNotFoundException;
 import com.spring.JavaT.meter.Meter;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ public class MeterReadingService {
 
     private final MeterReadingRepository meterReadingRepository;
     private final MeterService           meterService;
+    private final CustomerService        customerService;
     private final UserRepository           userRepository;
     private final MeterReadingMapper       meterReadingMapper;
 
@@ -41,10 +45,10 @@ public class MeterReadingService {
         int billingMonth = request.getReadingDate().getMonthValue();
         int billingYear  = request.getReadingDate().getYear();
 
+        validateReadingDate(meter.getId(), request.getReadingDate());
         validateNoDuplicateReading(meter.getId(), billingMonth, billingYear);
-        validateReadingDate(meter, request.getReadingDate());
 
-        BigDecimal previousReading = resolvePreviousReading(meter.getId(), request.getPreviousReading());
+        BigDecimal previousReading = resolvePreviousReading(meter.getId());
         BigDecimal currentReading  = request.getCurrentReading();
 
         validateReadingOrder(previousReading, currentReading);
@@ -69,6 +73,31 @@ public class MeterReadingService {
     public Page<MeterReadingDto> getAllReadings(List<SearchCriteria> criteria, Pageable pageable) {
         Specification<MeterReading> spec = new BaseSpecification<>(criteria);
         return meterReadingRepository.findAll(spec, pageable).map(meterReadingMapper::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MeterReadingDto> getReadingsForPortalUser(
+            String email,
+            UUID meterId,
+            List<SearchCriteria> extraCriteria,
+            Pageable pageable) {
+
+        Customer customer = customerService.requireLinkedCustomerForPortalUser(email);
+
+        if (meterId != null) {
+            assertMeterOwnedByCustomer(meterId, customer.getId());
+        }
+
+        List<SearchCriteria> criteria = new ArrayList<>();
+        criteria.add(new SearchCriteria("meter.customer.id", SearchCriteria.Op.EQ, customer.getId()));
+        if (meterId != null) {
+            criteria.add(new SearchCriteria("meter.id", SearchCriteria.Op.EQ, meterId));
+        }
+        if (extraCriteria != null) {
+            criteria.addAll(extraCriteria);
+        }
+
+        return getAllReadings(criteria, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +130,18 @@ public class MeterReadingService {
     // Private validation helpers
     // -------------------------------------------------------------------------
 
+    private void assertMeterOwnedByCustomer(UUID meterId, UUID customerId) {
+        Meter meter = meterService.findByIdOrThrow(meterId);
+
+        if (!meter.getCustomer().getId().equals(customerId)) {
+            throw new BusinessException(
+                    "You do not have access to readings for this meter",
+                    HttpStatus.FORBIDDEN,
+                    "METER_ACCESS_DENIED"
+            );
+        }
+    }
+
     private void validateNoDuplicateReading(UUID meterId, int billingMonth, int billingYear) {
         if (meterReadingRepository.existsByMeterIdAndBillingMonthAndBillingYear(
                 meterId, billingMonth, billingYear)) {
@@ -122,10 +163,22 @@ public class MeterReadingService {
         }
     }
 
-    private void validateReadingDate(Meter meter, java.time.LocalDate readingDate) {
-        if (readingDate.isBefore(meter.getInstallationDate())) {
+    private void validateReadingDate(UUID meterId, java.time.LocalDate readingDate) {
+        Meter meter = meterService.findByIdOrThrow(meterId);
+        java.time.LocalDate installationDate = meter.getInstallationDate();
+
+        if (installationDate == null) {
             throw new BusinessException(
-                    "Reading date cannot be before the meter installation date",
+                    "Meter installation date is not configured",
+                    HttpStatus.BAD_REQUEST,
+                    "METER_INSTALLATION_DATE_MISSING"
+            );
+        }
+
+        if (readingDate.isBefore(installationDate)) {
+            throw new BusinessException(
+                    "Reading date %s cannot be before meter installation date %s"
+                            .formatted(readingDate, installationDate),
                     HttpStatus.BAD_REQUEST,
                     "INVALID_READING_DATE"
             );
@@ -133,14 +186,10 @@ public class MeterReadingService {
     }
 
     /**
-     * Uses the client-supplied previous reading when present; otherwise the
-     * current reading from the most recent capture, or {@code 0} for a first reading.
+     * Resolves the previous reading from the most recent capture for this meter,
+     * or {@code 0} when no prior reading exists.
      */
-    private BigDecimal resolvePreviousReading(UUID meterId, BigDecimal suppliedPrevious) {
-        if (suppliedPrevious != null) {
-            return suppliedPrevious;
-        }
-
+    private BigDecimal resolvePreviousReading(UUID meterId) {
         return meterReadingRepository.findTopByMeterIdOrderByReadingDateDescIdDesc(meterId)
                 .map(MeterReading::getCurrentReading)
                 .orElse(BigDecimal.ZERO);
